@@ -638,12 +638,16 @@ public final class Keychain {
         }
     }
 
-    public func get<T>(_ key: String, useDataProtectionKeychain: Bool = true, ignoringAttributeSynchronizable: Bool = true, handler: (Attributes?) -> T) throws -> T {
+    public func get<T>(_ key: String, ignoringAttributeSynchronizable: Bool = true, handler: (Attributes?) -> T) throws -> T {
         var query = options.query(ignoringAttributeSynchronizable: ignoringAttributeSynchronizable)
 
         query[MatchLimit] = MatchLimitOne
+        
 
-        query[AttributeDataProtectionKeychain] = options.useDataProtectionKeychain
+        if #available(iOS 13.0, OSX 10.15, *) {
+            query[AttributeDataProtectionKeychain] = options.useDataProtectionKeychain
+        }
+        
         query[ReturnData] = kCFBooleanTrue
         query[ReturnAttributes] = kCFBooleanTrue
         query[ReturnRef] = kCFBooleanTrue
@@ -677,10 +681,14 @@ public final class Keychain {
         try set(data, key: key, ignoringAttributeSynchronizable: ignoringAttributeSynchronizable)
     }
 
-    public func set(_ value: Data, key: String, useDataProtectionKeychain: Bool = true, ignoringAttributeSynchronizable: Bool = true) throws {
+    public func set(_ value: Data, key: String, ignoringAttributeSynchronizable: Bool = true) throws {
         var query = options.query(ignoringAttributeSynchronizable: ignoringAttributeSynchronizable)
         query[AttributeAccount] = key
-        query[AttributeDataProtectionKeychain] = options.useDataProtectionKeychain
+        
+        if #available(iOS 13.0, OSX 10.15, *) {
+            query[AttributeDataProtectionKeychain] = options.useDataProtectionKeychain
+        }
+        
         #if os(iOS)
         if #available(iOS 9.0, *) {
             if let authenticationUI = options.authenticationUI {
@@ -1246,8 +1254,10 @@ private let AttributeAccessible = String(kSecAttrAccessible)
 private let AttributeAccessControl = String(kSecAttrAccessControl)
 
 private let AttributeAccessGroup = String(kSecAttrAccessGroup)
+
 @available(iOS 13.0, OSX 10.15, *)
 private let AttributeDataProtectionKeychain = String(kSecUseDataProtectionKeychain)
+
 private let AttributeSynchronizable = String(kSecAttrSynchronizable)
 private let AttributeCreationDate = String(kSecAttrCreationDate)
 private let AttributeModificationDate = String(kSecAttrModificationDate)
@@ -1345,7 +1355,9 @@ extension Options {
             query[AttributeAccessGroup] = accessGroup
         }
         
-        query[AttributeDataProtectionKeychain] = useDataProtectionKeychain
+        if #available(iOS 13.0, OSX 10.15, *) {
+            query[AttributeDataProtectionKeychain] = useDataProtectionKeychain
+        }
         
         if ignoringAttributeSynchronizable {
             query[AttributeSynchronizable] = SynchronizableAny
