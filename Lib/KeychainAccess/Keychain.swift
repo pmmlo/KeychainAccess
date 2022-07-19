@@ -541,6 +541,13 @@ public final class Keychain {
         options.authenticationPolicy = authenticationPolicy
         return Keychain(options)
     }
+    
+    @available(iOS 13.0, OSX 10.15, *)
+    public func usingDataProtectionKeychain(_ useDataProtectionKeychain: Bool) -> Keychain {
+        var options = self.options
+        options.useDataProtectionKeychain = useDataProtectionKeychain
+        return Keychain(options)
+    }
 
     public func synchronizable(_ synchronizable: Bool) -> Keychain {
         var options = self.options
@@ -631,11 +638,12 @@ public final class Keychain {
         }
     }
 
-    public func get<T>(_ key: String, ignoringAttributeSynchronizable: Bool = true, handler: (Attributes?) -> T) throws -> T {
+    public func get<T>(_ key: String, useDataProtectionKeychain: Bool = true, ignoringAttributeSynchronizable: Bool = true, handler: (Attributes?) -> T) throws -> T {
         var query = options.query(ignoringAttributeSynchronizable: ignoringAttributeSynchronizable)
 
         query[MatchLimit] = MatchLimitOne
 
+        query[AttributeDataProtectionKeychain] = options.useDataProtectionKeychain
         query[ReturnData] = kCFBooleanTrue
         query[ReturnAttributes] = kCFBooleanTrue
         query[ReturnRef] = kCFBooleanTrue
@@ -669,9 +677,10 @@ public final class Keychain {
         try set(data, key: key, ignoringAttributeSynchronizable: ignoringAttributeSynchronizable)
     }
 
-    public func set(_ value: Data, key: String, ignoringAttributeSynchronizable: Bool = true) throws {
+    public func set(_ value: Data, key: String, useDataProtectionKeychain: Bool = true, ignoringAttributeSynchronizable: Bool = true) throws {
         var query = options.query(ignoringAttributeSynchronizable: ignoringAttributeSynchronizable)
         query[AttributeAccount] = key
+        query[AttributeDataProtectionKeychain] = options.useDataProtectionKeychain
         #if os(iOS)
         if #available(iOS 9.0, *) {
             if let authenticationUI = options.authenticationUI {
@@ -1214,6 +1223,7 @@ struct Options {
     var accessibility: Accessibility = .afterFirstUnlock
     var authenticationPolicy: AuthenticationPolicy?
 
+    var useDataProtectionKeychain: Bool = true
     var synchronizable: Bool = false
 
     var label: String?
@@ -1236,6 +1246,8 @@ private let AttributeAccessible = String(kSecAttrAccessible)
 private let AttributeAccessControl = String(kSecAttrAccessControl)
 
 private let AttributeAccessGroup = String(kSecAttrAccessGroup)
+@available(iOS 13.0, OSX 10.15, *)
+private let AttributeDataProtectionKeychain = String(kSecUseDataProtectionKeychain)
 private let AttributeSynchronizable = String(kSecAttrSynchronizable)
 private let AttributeCreationDate = String(kSecAttrCreationDate)
 private let AttributeModificationDate = String(kSecAttrModificationDate)
@@ -1332,6 +1344,9 @@ extension Options {
         if let accessGroup = self.accessGroup {
             query[AttributeAccessGroup] = accessGroup
         }
+        
+        query[AttributeDataProtectionKeychain] = useDataProtectionKeychain
+        
         if ignoringAttributeSynchronizable {
             query[AttributeSynchronizable] = SynchronizableAny
         } else {
